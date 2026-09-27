@@ -6,12 +6,9 @@ import com.google.gson.reflect.TypeToken;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
+import java.io.*;
 import java.lang.reflect.Type;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.*;
 import java.util.*;
 
 public final class PermissionService {
@@ -21,120 +18,56 @@ public final class PermissionService {
     private final Map<UUID, PermissionUser> users = new LinkedHashMap<>();
 
     public PermissionService(MinecraftServer server) {
-        this.directory = server.getServerDirectory().toPath().resolve("config").resolve("kivra");
+        directory = server.getServerDirectory().toPath().resolve("config").resolve("kivra");
     }
 
     public void load() {
         try {
             Files.createDirectories(directory);
-            loadGroups();
-            loadUsers();
-            if (!groups.containsKey("default")) {
-                groups.put("default", new PermissionGroup("default"));
-                save();
-            }
-        } catch (IOException e) {
-            throw new IllegalStateException("Could not load Kivra permission data", e);
-        }
+            loadGroups(); loadUsers();
+            if (!groups.containsKey("default")) groups.put("default", new PermissionGroup("default"));
+            save();
+        } catch (IOException e) { throw new IllegalStateException("Could not load Kivra permission data", e); }
     }
 
     private void loadGroups() throws IOException {
-        Path file = directory.resolve("groups.json");
-        if (!Files.exists(file)) return;
-        Type type = new TypeToken<Map<String, PermissionGroup>>() {}.getType();
-        try (Reader reader = Files.newBufferedReader(file)) {
-            Map<String, PermissionGroup> loaded = GSON.fromJson(reader, type);
-            if (loaded != null) groups.putAll(loaded);
-        }
+        Path file = directory.resolve("groups.json"); if (!Files.exists(file)) return;
+        Type type = new TypeToken<Map<String, PermissionGroup>>(){}.getType();
+        try (Reader r = Files.newBufferedReader(file)) { Map<String, PermissionGroup> data = GSON.fromJson(r,type); if(data!=null) groups.putAll(data); }
     }
-
     private void loadUsers() throws IOException {
-        Path file = directory.resolve("users.json");
-        if (!Files.exists(file)) return;
-        Type type = new TypeToken<Map<UUID, PermissionUser>>() {}.getType();
-        try (Reader reader = Files.newBufferedReader(file)) {
-            Map<UUID, PermissionUser> loaded = GSON.fromJson(reader, type);
-            if (loaded != null) users.putAll(loaded);
-        }
+        Path file = directory.resolve("users.json"); if (!Files.exists(file)) return;
+        Type type = new TypeToken<Map<UUID, PermissionUser>>(){}.getType();
+        try (Reader r = Files.newBufferedReader(file)) { Map<UUID, PermissionUser> data = GSON.fromJson(r,type); if(data!=null) users.putAll(data); }
     }
-
     public synchronized void save() {
         try {
             Files.createDirectories(directory);
-            try (Writer writer = Files.newBufferedWriter(directory.resolve("groups.json"))) {
-                GSON.toJson(groups, writer);
-            }
-            try (Writer writer = Files.newBufferedWriter(directory.resolve("users.json"))) {
-                GSON.toJson(users, writer);
-            }
-        } catch (IOException e) {
-            throw new IllegalStateException("Could not save Kivra permission data", e);
-        }
+            try(Writer w=Files.newBufferedWriter(directory.resolve("groups.json"))){GSON.toJson(groups,w);}
+            try(Writer w=Files.newBufferedWriter(directory.resolve("users.json"))){GSON.toJson(users,w);}
+        } catch(IOException e){throw new IllegalStateException("Could not save Kivra permission data",e);}
     }
 
-    public PermissionUser user(UUID uuid) {
-        return users.computeIfAbsent(uuid, PermissionUser::new);
-    }
+    private String key(String value){ return value.toLowerCase(Locale.ROOT); }
+    public PermissionUser user(UUID uuid){return users.computeIfAbsent(uuid,PermissionUser::new);}
+    public PermissionGroup group(String name){return groups.get(key(name));}
+    public Collection<PermissionGroup> groups(){return Collections.unmodifiableCollection(groups.values());}
 
-    public PermissionGroup group(String name) {
-        return groups.get(name.toLowerCase(Locale.ROOT));
-    }
+    public boolean createGroup(String name){String k=key(name); if(k.isBlank()||groups.containsKey(k))return false; groups.put(k,new PermissionGroup(k)); save(); return true;}
+    public boolean deleteGroup(String name){String k=key(name); if(k.equals("default")||groups.remove(k)==null)return false; users.values().forEach(u->u.groups().remove(k)); groups.values().forEach(g->g.parents().remove(k)); save(); return true;}
+    public boolean addGroup(UUID uuid,String name){String k=key(name); if(!groups.containsKey(k))return false; boolean c=user(uuid).groups().add(k); if(c)save(); return c;}
+    public boolean removeGroup(UUID uuid,String name){String k=key(name); if(k.equals("default"))return false; boolean c=user(uuid).groups().remove(k); if(c)save(); return c;}
+    public boolean addPermissionToGroup(String group,String node){PermissionGroup g=group(group); if(g==null)return false; boolean c=g.permissions().add(key(node)); if(c)save(); return c;}
+    public boolean removePermissionFromGroup(String group,String node){PermissionGroup g=group(group); if(g==null)return false; boolean c=g.permissions().remove(key(node)); if(c)save(); return c;}
+    public boolean addUserPermission(UUID uuid,String node){boolean c=user(uuid).permissions().add(key(node)); if(c)save(); return c;}
+    public boolean removeUserPermission(UUID uuid,String node){boolean c=user(uuid).permissions().remove(key(node)); if(c)save(); return c;}
+    public boolean addParent(String child,String parent){PermissionGroup c=group(child),p=group(parent); if(c==null||p==null||key(child).equals(key(parent)))return false; boolean changed=c.parents().add(key(parent)); if(changed)save(); return changed;}
+    public boolean removeParent(String child,String parent){PermissionGroup c=group(child); if(c==null)return false; boolean changed=c.parents().remove(key(parent)); if(changed)save(); return changed;}
+    public boolean setPrefix(String group,String prefix){PermissionGroup g=group(group); if(g==null)return false; g.setPrefix(prefix); save(); return true;}
+    public boolean setWeight(String group,int weight){PermissionGroup g=group(group); if(g==null)return false; g.setWeight(weight); save(); return true;}
 
-    public Collection<PermissionGroup> groups() {
-        return Collections.unmodifiableCollection(groups.values());
-    }
-
-    public boolean createGroup(String name) {
-        String key = name.toLowerCase(Locale.ROOT);
-        if (groups.containsKey(key)) return false;
-        groups.put(key, new PermissionGroup(key));
-        save();
-        return true;
-    }
-
-    public boolean addGroup(UUID uuid, String group) {
-        if (!groups.containsKey(group.toLowerCase(Locale.ROOT))) return false;
-        boolean changed = user(uuid).groups().add(group.toLowerCase(Locale.ROOT));
-        if (changed) save();
-        return changed;
-    }
-
-    public boolean addPermissionToGroup(String groupName, String permission) {
-        PermissionGroup group = group(groupName);
-        if (group == null) return false;
-        boolean changed = group.permissions().add(permission.toLowerCase(Locale.ROOT));
-        if (changed) save();
-        return changed;
-    }
-
-    public boolean hasPermission(ServerPlayer player, String permission) {
-        PermissionUser user = user(player.getUUID());
-        String node = permission.toLowerCase(Locale.ROOT);
-        if (matches(user.permissions(), node)) return true;
-        for (String group : user.groups()) {
-            if (hasGroupPermission(group, node, new HashSet<>())) return true;
-        }
-        return false;
-    }
-
-    private boolean hasGroupPermission(String groupName, String node, Set<String> visited) {
-        String key = groupName.toLowerCase(Locale.ROOT);
-        if (!visited.add(key)) return false;
-        PermissionGroup group = groups.get(key);
-        if (group == null) return false;
-        if (matches(group.permissions(), node)) return true;
-        for (String parent : group.parents()) {
-            if (hasGroupPermission(parent, node, visited)) return true;
-        }
-        return false;
-    }
-
-    private boolean matches(Set<String> nodes, String requested) {
-        if (nodes.contains("*") || nodes.contains(requested)) return true;
-        int dot = requested.length();
-        while ((dot = requested.lastIndexOf('.', dot - 1)) >= 0) {
-            if (nodes.contains(requested.substring(0, dot) + ".*")) return true;
-        }
-        return false;
-    }
+    public boolean hasPermission(ServerPlayer player,String permission){return hasPermission(player.getUUID(),permission);}
+    public boolean hasPermission(UUID uuid,String permission){PermissionUser u=user(uuid); String node=key(permission); if(matches(u.permissions(),node))return true; for(String g:u.groups())if(hasGroupPermission(g,node,new HashSet<>()))return true; return false;}
+    private boolean hasGroupPermission(String name,String node,Set<String> visited){String k=key(name); if(!visited.add(k))return false; PermissionGroup g=groups.get(k); if(g==null)return false; if(matches(g.permissions(),node))return true; for(String p:g.parents())if(hasGroupPermission(p,node,visited))return true; return false;}
+    private boolean matches(Set<String> nodes,String requested){if(nodes.contains("*")||nodes.contains(requested))return true; int dot=requested.length(); while((dot=requested.lastIndexOf('.',dot-1))>=0)if(nodes.contains(requested.substring(0,dot)+".*"))return true; return false;}
 }
