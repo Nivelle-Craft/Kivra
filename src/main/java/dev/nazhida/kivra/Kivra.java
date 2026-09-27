@@ -1,5 +1,7 @@
 package dev.nazhida.kivra;
 
+import com.mojang.logging.LogUtils;
+import dev.nazhida.kivra.chat.ChatModule;
 import dev.nazhida.kivra.command.KivraCommands;
 import dev.nazhida.kivra.permissions.PermissionService;
 import net.minecraftforge.common.MinecraftForge;
@@ -8,7 +10,6 @@ import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
-import com.mojang.logging.LogUtils;
 
 @Mod(Kivra.MOD_ID)
 public final class Kivra {
@@ -18,13 +19,14 @@ public final class Kivra {
 
     public Kivra() {
         MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(new ChatModule());
     }
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
         permissions = new PermissionService(event.getServer());
         permissions.load();
-        LOGGER.info("Kivra permissions module loaded.");
+        LOGGER.info("Kivra permissions and chat modules loaded.");
     }
 
     @SubscribeEvent
