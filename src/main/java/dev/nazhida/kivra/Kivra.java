@@ -4,15 +4,12 @@ import com.mojang.logging.LogUtils;
 import dev.nazhida.kivra.chat.ChatModule;
 import dev.nazhida.kivra.claims.ClaimEvents;
 import dev.nazhida.kivra.claims.ClaimService;
-import dev.nazhida.kivra.command.ClaimCommands;
-import dev.nazhida.kivra.command.EconomyCommands;
-import dev.nazhida.kivra.command.EssentialsCommands;
-import dev.nazhida.kivra.command.KitCommands;
-import dev.nazhida.kivra.command.KivraCommands;
-import dev.nazhida.kivra.command.ShopCommands;
+import dev.nazhida.kivra.command.*;
 import dev.nazhida.kivra.economy.EconomyService;
 import dev.nazhida.kivra.essentials.EssentialsService;
 import dev.nazhida.kivra.kits.KitService;
+import dev.nazhida.kivra.moderation.ModerationEvents;
+import dev.nazhida.kivra.moderation.ModerationService;
 import dev.nazhida.kivra.permissions.PermissionService;
 import dev.nazhida.kivra.shops.ShopService;
 import net.minecraftforge.common.MinecraftForge;
@@ -32,8 +29,9 @@ public final class Kivra {
     private static KitService kits;
     private static ClaimService claims;
     private static ShopService shops;
+    private static ModerationService moderation;
 
-    public Kivra(){MinecraftForge.EVENT_BUS.register(this);MinecraftForge.EVENT_BUS.register(new ChatModule());MinecraftForge.EVENT_BUS.register(new ClaimEvents());}
+    public Kivra(){MinecraftForge.EVENT_BUS.register(this);MinecraftForge.EVENT_BUS.register(new ChatModule());MinecraftForge.EVENT_BUS.register(new ClaimEvents());MinecraftForge.EVENT_BUS.register(new ModerationEvents());}
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event){
@@ -43,17 +41,13 @@ public final class Kivra {
         kits=new KitService(event.getServer());kits.load();
         claims=new ClaimService(event.getServer());claims.load();
         shops=new ShopService(event.getServer(),economy);shops.load();
-        LOGGER.info("Kivra permissions, chat, economy, essentials, kits, claims and shops modules loaded.");
+        moderation=new ModerationService(event.getServer().getServerDirectory().toPath());moderation.load();
+        LOGGER.info("Kivra core modules loaded: permissions, chat, economy, essentials, kits, claims, shops and moderation.");
     }
 
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event){
-        KivraCommands.register(event.getDispatcher());
-        EconomyCommands.register(event.getDispatcher());
-        EssentialsCommands.register(event.getDispatcher());
-        KitCommands.register(event.getDispatcher());
-        ClaimCommands.register(event.getDispatcher());
-        ShopCommands.register(event.getDispatcher());
+        KivraCommands.register(event.getDispatcher());EconomyCommands.register(event.getDispatcher());EssentialsCommands.register(event.getDispatcher());KitCommands.register(event.getDispatcher());ClaimCommands.register(event.getDispatcher());ShopCommands.register(event.getDispatcher());ModerationCommands.register(event.getDispatcher());
     }
 
     public static PermissionService permissions(){if(permissions==null)throw new IllegalStateException("Kivra permissions are not initialized yet");return permissions;}
@@ -62,4 +56,5 @@ public final class Kivra {
     public static KitService kits(){if(kits==null)throw new IllegalStateException("Kivra kits are not initialized yet");return kits;}
     public static ClaimService claims(){if(claims==null)throw new IllegalStateException("Kivra claims are not initialized yet");return claims;}
     public static ShopService shops(){if(shops==null)throw new IllegalStateException("Kivra shops are not initialized yet");return shops;}
+    public static ModerationService moderation(){if(moderation==null)throw new IllegalStateException("Kivra moderation is not initialized yet");return moderation;}
 }
