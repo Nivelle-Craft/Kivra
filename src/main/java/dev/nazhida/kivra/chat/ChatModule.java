@@ -15,28 +15,31 @@ public final class ChatModule {
         String prefix = Kivra.permissions().prefix(player.getUUID());
         if (prefix == null || prefix.isBlank()) return;
 
-        event.setPlayerChatMessage(event.getPlayerChatMessage().withUnsignedContent(
+        event.setMessage(
             Component.literal(prefix + " " + player.getGameProfile().getName() + ": ")
                 .append(event.getMessage())
-        ));
+        );
     }
 
     @SubscribeEvent
-    public void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) updateTabName(player);
-    }
-
-    @SubscribeEvent
-    public void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player) updateTabName(player);
-    }
-
-    public static void updateTabName(ServerPlayer player) {
+    public void onNameFormat(PlayerEvent.NameFormat event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
         String prefix = Kivra.permissions().prefix(player.getUUID());
-        if (prefix == null || prefix.isBlank()) {
-            player.setTabListDisplayName(null);
-        } else {
-            player.setTabListDisplayName(Component.literal(prefix + " " + player.getGameProfile().getName()));
-        }
+        if (prefix == null || prefix.isBlank()) return;
+
+        event.setDisplayname(
+            Component.literal(prefix + " ").append(event.getUsername())
+        );
+    }
+
+    @SubscribeEvent
+    public void onTabFormat(PlayerEvent.TabListNameFormat event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        String prefix = Kivra.permissions().prefix(player.getUUID());
+        if (prefix == null || prefix.isBlank()) return;
+
+        event.setDisplayName(
+            Component.literal(prefix + " " + player.getGameProfile().getName())
+        );
     }
 }
