@@ -3,6 +3,7 @@ package dev.nazhida.kivra.claims;
 import dev.nazhida.kivra.Kivra;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.level.BlockEvent;
@@ -17,5 +18,9 @@ public final class ClaimEvents {
     @SubscribeEvent public void onRightClickEntity(PlayerInteractEvent.EntityInteract e){if(e.getEntity() instanceof ServerPlayer p&&!Kivra.claims().canInteract(p,e.getTarget().blockPosition()))e.setCanceled(true);}
     @SubscribeEvent public void onAttackEntity(AttackEntityEvent e){if(e.getEntity() instanceof ServerPlayer p&&!Kivra.claims().canBuild(p,e.getTarget().blockPosition()))e.setCanceled(true);}
     @SubscribeEvent public void onExplosion(ExplosionEvent.Detonate e){e.getAffectedBlocks().removeIf(pos->Kivra.claims().isProtected(e.getLevel(),pos));}
-    @SubscribeEvent public void onFluid(BlockEvent.FluidPlaceBlockEvent e){BlockPos source=e.getLiquidPos();if(Kivra.claims().isProtected(e.getLevel(),e.getPos())&&!Kivra.claims().isProtected(e.getLevel(),source))e.setCanceled(true);}
+    @SubscribeEvent public void onFluid(BlockEvent.FluidPlaceBlockEvent e){
+        if(!(e.getLevel() instanceof Level level))return;
+        BlockPos source=e.getLiquidPos();
+        if(Kivra.claims().isProtected(level,e.getPos())&&!Kivra.claims().isProtected(level,source))e.setCanceled(true);
+    }
 }
