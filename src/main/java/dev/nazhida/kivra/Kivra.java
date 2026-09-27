@@ -9,10 +9,12 @@ import dev.nazhida.kivra.command.EconomyCommands;
 import dev.nazhida.kivra.command.EssentialsCommands;
 import dev.nazhida.kivra.command.KitCommands;
 import dev.nazhida.kivra.command.KivraCommands;
+import dev.nazhida.kivra.command.ShopCommands;
 import dev.nazhida.kivra.economy.EconomyService;
 import dev.nazhida.kivra.essentials.EssentialsService;
 import dev.nazhida.kivra.kits.KitService;
 import dev.nazhida.kivra.permissions.PermissionService;
+import dev.nazhida.kivra.shops.ShopService;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
@@ -29,6 +31,7 @@ public final class Kivra {
     private static EssentialsService essentials;
     private static KitService kits;
     private static ClaimService claims;
+    private static ShopService shops;
 
     public Kivra(){MinecraftForge.EVENT_BUS.register(this);MinecraftForge.EVENT_BUS.register(new ChatModule());MinecraftForge.EVENT_BUS.register(new ClaimEvents());}
 
@@ -39,7 +42,8 @@ public final class Kivra {
         essentials=new EssentialsService(event.getServer());essentials.load();
         kits=new KitService(event.getServer());kits.load();
         claims=new ClaimService(event.getServer());claims.load();
-        LOGGER.info("Kivra permissions, chat, economy, essentials, kits and claims modules loaded.");
+        shops=new ShopService(event.getServer(),economy);shops.load();
+        LOGGER.info("Kivra permissions, chat, economy, essentials, kits, claims and shops modules loaded.");
     }
 
     @SubscribeEvent
@@ -49,6 +53,7 @@ public final class Kivra {
         EssentialsCommands.register(event.getDispatcher());
         KitCommands.register(event.getDispatcher());
         ClaimCommands.register(event.getDispatcher());
+        ShopCommands.register(event.getDispatcher());
     }
 
     public static PermissionService permissions(){if(permissions==null)throw new IllegalStateException("Kivra permissions are not initialized yet");return permissions;}
@@ -56,4 +61,5 @@ public final class Kivra {
     public static EssentialsService essentials(){if(essentials==null)throw new IllegalStateException("Kivra essentials are not initialized yet");return essentials;}
     public static KitService kits(){if(kits==null)throw new IllegalStateException("Kivra kits are not initialized yet");return kits;}
     public static ClaimService claims(){if(claims==null)throw new IllegalStateException("Kivra claims are not initialized yet");return claims;}
+    public static ShopService shops(){if(shops==null)throw new IllegalStateException("Kivra shops are not initialized yet");return shops;}
 }
