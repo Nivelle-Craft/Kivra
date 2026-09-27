@@ -2,6 +2,9 @@ package dev.nazhida.kivra;
 
 import com.mojang.logging.LogUtils;
 import dev.nazhida.kivra.chat.ChatModule;
+import dev.nazhida.kivra.claims.ClaimEvents;
+import dev.nazhida.kivra.claims.ClaimService;
+import dev.nazhida.kivra.command.ClaimCommands;
 import dev.nazhida.kivra.command.EconomyCommands;
 import dev.nazhida.kivra.command.EssentialsCommands;
 import dev.nazhida.kivra.command.KitCommands;
@@ -25,8 +28,9 @@ public final class Kivra {
     private static EconomyService economy;
     private static EssentialsService essentials;
     private static KitService kits;
+    private static ClaimService claims;
 
-    public Kivra(){MinecraftForge.EVENT_BUS.register(this);MinecraftForge.EVENT_BUS.register(new ChatModule());}
+    public Kivra(){MinecraftForge.EVENT_BUS.register(this);MinecraftForge.EVENT_BUS.register(new ChatModule());MinecraftForge.EVENT_BUS.register(new ClaimEvents());}
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event){
@@ -34,7 +38,8 @@ public final class Kivra {
         economy=new EconomyService(event.getServer());economy.load();
         essentials=new EssentialsService(event.getServer());essentials.load();
         kits=new KitService(event.getServer());kits.load();
-        LOGGER.info("Kivra permissions, chat, economy, essentials and kits modules loaded.");
+        claims=new ClaimService(event.getServer());claims.load();
+        LOGGER.info("Kivra permissions, chat, economy, essentials, kits and claims modules loaded.");
     }
 
     @SubscribeEvent
@@ -43,10 +48,12 @@ public final class Kivra {
         EconomyCommands.register(event.getDispatcher());
         EssentialsCommands.register(event.getDispatcher());
         KitCommands.register(event.getDispatcher());
+        ClaimCommands.register(event.getDispatcher());
     }
 
     public static PermissionService permissions(){if(permissions==null)throw new IllegalStateException("Kivra permissions are not initialized yet");return permissions;}
     public static EconomyService economy(){if(economy==null)throw new IllegalStateException("Kivra economy is not initialized yet");return economy;}
     public static EssentialsService essentials(){if(essentials==null)throw new IllegalStateException("Kivra essentials are not initialized yet");return essentials;}
     public static KitService kits(){if(kits==null)throw new IllegalStateException("Kivra kits are not initialized yet");return kits;}
+    public static ClaimService claims(){if(claims==null)throw new IllegalStateException("Kivra claims are not initialized yet");return claims;}
 }
