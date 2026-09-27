@@ -14,65 +14,25 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-
 import java.util.stream.Collectors;
 
 public final class KivraCommands {
-    private KivraCommands() {}
-
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("kivra");
-        root.executes(c -> { msg(c.getSource(), "Kivra v0.1.0 — Permissions"); return 1; });
-        root.then(Commands.literal("groups").executes(c -> {
-            String list = Kivra.permissions().groups().stream().map(PermissionGroup::name).collect(Collectors.joining(", "));
-            msg(c.getSource(), "Groups: " + list); return 1;
+    private KivraCommands(){}
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher){
+        LiteralArgumentBuilder<CommandSourceStack> root=Commands.literal("kivra");
+        root.executes(c->{msg(c.getSource(),"Kivra v0.2.0 — all-in-one server core");return 1;});
+        root.then(Commands.literal("admin").requires(s->allowed(s,"kivra.admin")).executes(c->{
+            ServerPlayer p=c.getSource().getPlayerOrException();PermissionGroup g=Kivra.permissions().primaryGroup(p.getUUID());
+            msg(c.getSource(),"=== Kivra Admin ===");msg(c.getSource(),"User: "+p.getGameProfile().getName()+" | Rank: "+(g==null?"default":g.name()));
+            msg(c.getSource(),"Modules: Permissions | Economy | Essentials | Kits | Claims | Shops | Moderation");
+            msg(c.getSource(),"Use /kivra groups, /kivra group ..., /kivra user ... and module admin commands.");
+            msg(c.getSource(),"Inventory GUI is the next admin UI layer.");return 1;
         }));
-        root.then(groupCommands());
-        root.then(userCommands());
-        dispatcher.register(root);
+        root.then(Commands.literal("groups").requires(s->allowed(s,"kivra.admin")).executes(c->{String list=Kivra.permissions().groups().stream().map(PermissionGroup::name).collect(Collectors.joining(", "));msg(c.getSource(),"Groups: "+list);return 1;}));
+        root.then(groupCommands());root.then(userCommands());dispatcher.register(root);
     }
-
-    private static LiteralArgumentBuilder<CommandSourceStack> groupCommands() {
-        LiteralArgumentBuilder<CommandSourceStack> group = Commands.literal("group");
-        group.requires(s -> s.hasPermission(4));
-        group.then(Commands.literal("create").then(word("group").executes(c -> result(c, Kivra.permissions().createGroup(str(c,"group")), "Group created.", "Could not create group."))));
-        group.then(Commands.literal("delete").then(word("group").executes(c -> result(c, Kivra.permissions().deleteGroup(str(c,"group")), "Group deleted.", "Could not delete group."))));
-        group.then(Commands.literal("permission").then(word("group")
-            .then(Commands.literal("add").then(word("node").executes(c -> result(c,Kivra.permissions().addPermissionToGroup(str(c,"group"),str(c,"node")),"Permission added.","Could not add permission."))))
-            .then(Commands.literal("remove").then(word("node").executes(c -> result(c,Kivra.permissions().removePermissionFromGroup(str(c,"group"),str(c,"node")),"Permission removed.","Could not remove permission."))))));
-        group.then(Commands.literal("parent").then(word("group")
-            .then(Commands.literal("add").then(word("parent").executes(c -> result(c,Kivra.permissions().addParent(str(c,"group"),str(c,"parent")),"Parent added.","Could not add parent."))))
-            .then(Commands.literal("remove").then(word("parent").executes(c -> result(c,Kivra.permissions().removeParent(str(c,"group"),str(c,"parent")),"Parent removed.","Could not remove parent."))))));
-        group.then(Commands.literal("prefix").then(word("group").then(Commands.argument("prefix",StringArgumentType.greedyString()).executes(c -> result(c,Kivra.permissions().setPrefix(str(c,"group"),StringArgumentType.getString(c,"prefix")),"Prefix updated.","Unknown group.")))));
-        group.then(Commands.literal("weight").then(word("group").then(Commands.argument("weight",IntegerArgumentType.integer()).executes(c -> result(c,Kivra.permissions().setWeight(str(c,"group"),IntegerArgumentType.getInteger(c,"weight")),"Weight updated.","Unknown group.")))));
-        return group;
-    }
-
-    private static LiteralArgumentBuilder<CommandSourceStack> userCommands() {
-        LiteralArgumentBuilder<CommandSourceStack> user = Commands.literal("user");
-        user.requires(s -> s.hasPermission(4));
-        RequiredArgumentBuilder<CommandSourceStack, ?> player = Commands.argument("player", EntityArgument.player());
-        player.then(Commands.literal("info").executes(c -> {
-            ServerPlayer p=EntityArgument.getPlayer(c,"player"); PermissionGroup primary=Kivra.permissions().primaryGroup(p.getUUID());
-            msg(c.getSource(),p.getGameProfile().getName()+" | primary="+(primary==null?"default":primary.name())+" | groups="+String.join(", ",Kivra.permissions().effectiveGroups(p.getUUID()))+" | prefix="+Kivra.permissions().prefix(p.getUUID())); return 1;
-        }));
-        LiteralArgumentBuilder<CommandSourceStack> ranks=Commands.literal("group");
-        ranks.then(Commands.literal("add").then(word("group").executes(c->{ServerPlayer p=EntityArgument.getPlayer(c,"player");return result(c,Kivra.permissions().addGroup(p.getUUID(),str(c,"group")),"Group added.","Could not add group.");})));
-        ranks.then(Commands.literal("remove").then(word("group").executes(c->{ServerPlayer p=EntityArgument.getPlayer(c,"player");return result(c,Kivra.permissions().removeGroup(p.getUUID(),str(c,"group")),"Group removed.","Could not remove group.");})));
-        ranks.then(Commands.literal("tempadd").then(word("group").then(word("duration").executes(c->{
-            ServerPlayer p=EntityArgument.getPlayer(c,"player"); try { long ms=DurationParser.parseMillis(str(c,"duration")); return result(c,Kivra.permissions().addTemporaryGroup(p.getUUID(),str(c,"group"),ms),"Temporary group added for "+str(c,"duration")+".","Could not add temporary group."); } catch(Exception e){msg(c.getSource(),"Invalid duration. Examples: 30m, 12h, 7d, 2w");return 0;}
-        }))));
-        ranks.then(Commands.literal("tempremove").then(word("group").executes(c->{ServerPlayer p=EntityArgument.getPlayer(c,"player");return result(c,Kivra.permissions().removeTemporaryGroup(p.getUUID(),str(c,"group")),"Temporary group removed.","Temporary group not found.");})));
-        player.then(ranks);
-        LiteralArgumentBuilder<CommandSourceStack> perms=Commands.literal("permission");
-        perms.then(Commands.literal("add").then(word("node").executes(c->{ServerPlayer p=EntityArgument.getPlayer(c,"player");return result(c,Kivra.permissions().addUserPermission(p.getUUID(),str(c,"node")),"User permission added.","Could not add permission.");})));
-        perms.then(Commands.literal("remove").then(word("node").executes(c->{ServerPlayer p=EntityArgument.getPlayer(c,"player");return result(c,Kivra.permissions().removeUserPermission(p.getUUID(),str(c,"node")),"User permission removed.","Could not remove permission.");})));
-        player.then(perms);
-        user.then(player); return user;
-    }
-
-    private static int result(CommandContext<CommandSourceStack> c,boolean ok,String yes,String no){msg(c.getSource(),ok?yes:no);return ok?1:0;}
-    private static void msg(CommandSourceStack s,String m){s.sendSuccess(()->Component.literal(m),false);}
-    private static RequiredArgumentBuilder<CommandSourceStack,String> word(String n){return Commands.argument(n,StringArgumentType.word());}
-    private static String str(CommandContext<CommandSourceStack> c,String n){return StringArgumentType.getString(c,n);}
+    private static LiteralArgumentBuilder<CommandSourceStack> groupCommands(){LiteralArgumentBuilder<CommandSourceStack> group=Commands.literal("group");group.requires(s->allowed(s,"kivra.admin"));group.then(Commands.literal("create").then(word("group").executes(c->result(c,Kivra.permissions().createGroup(str(c,"group")),"Group created.","Could not create group."))));group.then(Commands.literal("delete").then(word("group").executes(c->result(c,Kivra.permissions().deleteGroup(str(c,"group")),"Group deleted.","Could not delete group."))));group.then(Commands.literal("permission").then(word("group").then(Commands.literal("add").then(word("node").executes(c->result(c,Kivra.permissions().addPermissionToGroup(str(c,"group"),str(c,"node")),"Permission added.","Could not add permission.")))).then(Commands.literal("remove").then(word("node").executes(c->result(c,Kivra.permissions().removePermissionFromGroup(str(c,"group"),str(c,"node")),"Permission removed.","Could not remove permission."))))));group.then(Commands.literal("parent").then(word("group").then(Commands.literal("add").then(word("parent").executes(c->result(c,Kivra.permissions().addParent(str(c,"group"),str(c,"parent")),"Parent added.","Could not add parent.")))).then(Commands.literal("remove").then(word("parent").executes(c->result(c,Kivra.permissions().removeParent(str(c,"group"),str(c,"parent")),"Parent removed.","Could not remove parent."))))));group.then(Commands.literal("prefix").then(word("group").then(Commands.argument("prefix",StringArgumentType.greedyString()).executes(c->result(c,Kivra.permissions().setPrefix(str(c,"group"),StringArgumentType.getString(c,"prefix")),"Prefix updated.","Unknown group.")))));group.then(Commands.literal("weight").then(word("group").then(Commands.argument("weight",IntegerArgumentType.integer()).executes(c->result(c,Kivra.permissions().setWeight(str(c,"group"),IntegerArgumentType.getInteger(c,"weight")),"Weight updated.","Unknown group.")))));return group;}
+    private static LiteralArgumentBuilder<CommandSourceStack> userCommands(){LiteralArgumentBuilder<CommandSourceStack> user=Commands.literal("user");user.requires(s->allowed(s,"kivra.admin"));RequiredArgumentBuilder<CommandSourceStack,?> player=Commands.argument("player",EntityArgument.player());player.then(Commands.literal("info").executes(c->{ServerPlayer p=EntityArgument.getPlayer(c,"player");PermissionGroup primary=Kivra.permissions().primaryGroup(p.getUUID());msg(c.getSource(),p.getGameProfile().getName()+" | primary="+(primary==null?"default":primary.name())+" | groups="+String.join(", ",Kivra.permissions().effectiveGroups(p.getUUID()))+" | prefix="+Kivra.permissions().prefix(p.getUUID()));return 1;}));LiteralArgumentBuilder<CommandSourceStack> ranks=Commands.literal("group");ranks.then(Commands.literal("add").then(word("group").executes(c->{ServerPlayer p=EntityArgument.getPlayer(c,"player");return result(c,Kivra.permissions().addGroup(p.getUUID(),str(c,"group")),"Group added.","Could not add group.");})));ranks.then(Commands.literal("remove").then(word("group").executes(c->{ServerPlayer p=EntityArgument.getPlayer(c,"player");return result(c,Kivra.permissions().removeGroup(p.getUUID(),str(c,"group")),"Group removed.","Could not remove group.");})));ranks.then(Commands.literal("tempadd").then(word("group").then(word("duration").executes(c->{ServerPlayer p=EntityArgument.getPlayer(c,"player");try{long ms=DurationParser.parseMillis(str(c,"duration"));return result(c,Kivra.permissions().addTemporaryGroup(p.getUUID(),str(c,"group"),ms),"Temporary group added for "+str(c,"duration")+".","Could not add temporary group.");}catch(Exception e){msg(c.getSource(),"Invalid duration. Examples: 30m, 12h, 7d, 2w");return 0;}}))));ranks.then(Commands.literal("tempremove").then(word("group").executes(c->{ServerPlayer p=EntityArgument.getPlayer(c,"player");return result(c,Kivra.permissions().removeTemporaryGroup(p.getUUID(),str(c,"group")),"Temporary group removed.","Temporary group not found.");})));player.then(ranks);LiteralArgumentBuilder<CommandSourceStack> perms=Commands.literal("permission");perms.then(Commands.literal("add").then(word("node").executes(c->{ServerPlayer p=EntityArgument.getPlayer(c,"player");return result(c,Kivra.permissions().addUserPermission(p.getUUID(),str(c,"node")),"User permission added.","Could not add permission.");})));perms.then(Commands.literal("remove").then(word("node").executes(c->{ServerPlayer p=EntityArgument.getPlayer(c,"player");return result(c,Kivra.permissions().removeUserPermission(p.getUUID(),str(c,"node")),"User permission removed.","Could not remove permission.");})));player.then(perms);user.then(player);return user;}
+    private static boolean allowed(CommandSourceStack s,String node){if(s.hasPermission(4))return true;try{return Kivra.permissions().hasPermission(s.getPlayerOrException(),node);}catch(Exception e){return false;}}
+    private static int result(CommandContext<CommandSourceStack>c,boolean ok,String yes,String no){msg(c.getSource(),ok?yes:no);return ok?1:0;}private static void msg(CommandSourceStack s,String m){s.sendSuccess(()->Component.literal(m),false);}private static RequiredArgumentBuilder<CommandSourceStack,String> word(String n){return Commands.argument(n,StringArgumentType.word());}private static String str(CommandContext<CommandSourceStack>c,String n){return StringArgumentType.getString(c,n);}
 }
