@@ -12,7 +12,7 @@ public final class AdminMenu {
 
     public static void open(ServerPlayer player) {
         player.openMenu(new SimpleMenuProvider((id, inventory, ignored) -> {
-            ChestMenu menu = ChestMenu.threeRows(id, inventory);
+            AdminChestMenu menu = AdminChestMenu.threeRows(id, inventory);
             set(menu, 10, Items.PLAYER_HEAD, "Players", "Manage players and their Kivra data");
             set(menu, 11, Items.NAME_TAG, "Ranks & Permissions", "Groups, inheritance and permission nodes");
             set(menu, 12, Items.GOLD_INGOT, "Economy", "Balances and economy administration");
