@@ -7,6 +7,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import dev.nazhida.kivra.Kivra;
+import dev.nazhida.kivra.admin.AdminMenu;
 import dev.nazhida.kivra.permissions.DurationParser;
 import dev.nazhida.kivra.permissions.PermissionGroup;
 import net.minecraft.commands.CommandSourceStack;
@@ -21,13 +22,7 @@ public final class KivraCommands {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher){
         LiteralArgumentBuilder<CommandSourceStack> root=Commands.literal("kivra");
         root.executes(c->{msg(c.getSource(),"Kivra v0.2.0 — all-in-one server core");return 1;});
-        root.then(Commands.literal("admin").requires(s->allowed(s,"kivra.admin")).executes(c->{
-            ServerPlayer p=c.getSource().getPlayerOrException();PermissionGroup g=Kivra.permissions().primaryGroup(p.getUUID());
-            msg(c.getSource(),"=== Kivra Admin ===");msg(c.getSource(),"User: "+p.getGameProfile().getName()+" | Rank: "+(g==null?"default":g.name()));
-            msg(c.getSource(),"Modules: Permissions | Economy | Essentials | Kits | Claims | Shops | Moderation");
-            msg(c.getSource(),"Use /kivra groups, /kivra group ..., /kivra user ... and module admin commands.");
-            msg(c.getSource(),"Inventory GUI is the next admin UI layer.");return 1;
-        }));
+        root.then(Commands.literal("admin").requires(s->allowed(s,"kivra.admin")).executes(c->{AdminMenu.open(c.getSource().getPlayerOrException());return 1;}));
         root.then(Commands.literal("groups").requires(s->allowed(s,"kivra.admin")).executes(c->{String list=Kivra.permissions().groups().stream().map(PermissionGroup::name).collect(Collectors.joining(", "));msg(c.getSource(),"Groups: "+list);return 1;}));
         root.then(groupCommands());root.then(userCommands());dispatcher.register(root);
     }
