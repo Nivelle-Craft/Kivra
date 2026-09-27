@@ -1,6 +1,7 @@
 package dev.nazhida.kivra;
 
 import com.mojang.logging.LogUtils;
+import dev.nazhida.kivra.admin.AdminMenuEvents;
 import dev.nazhida.kivra.chat.ChatModule;
 import dev.nazhida.kivra.claims.ClaimEvents;
 import dev.nazhida.kivra.claims.ClaimService;
@@ -31,7 +32,7 @@ public final class Kivra {
     private static ShopService shops;
     private static ModerationService moderation;
 
-    public Kivra(){MinecraftForge.EVENT_BUS.register(this);MinecraftForge.EVENT_BUS.register(new ChatModule());MinecraftForge.EVENT_BUS.register(new ClaimEvents());MinecraftForge.EVENT_BUS.register(new ModerationEvents());}
+    public Kivra(){MinecraftForge.EVENT_BUS.register(this);MinecraftForge.EVENT_BUS.register(new ChatModule());MinecraftForge.EVENT_BUS.register(new ClaimEvents());MinecraftForge.EVENT_BUS.register(new ModerationEvents());MinecraftForge.EVENT_BUS.register(new AdminMenuEvents());}
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event){
@@ -46,9 +47,7 @@ public final class Kivra {
     }
 
     @SubscribeEvent
-    public void onRegisterCommands(RegisterCommandsEvent event){
-        KivraCommands.register(event.getDispatcher());EconomyCommands.register(event.getDispatcher());EssentialsCommands.register(event.getDispatcher());KitCommands.register(event.getDispatcher());ClaimCommands.register(event.getDispatcher());ShopCommands.register(event.getDispatcher());ModerationCommands.register(event.getDispatcher());
-    }
+    public void onRegisterCommands(RegisterCommandsEvent event){KivraCommands.register(event.getDispatcher());EconomyCommands.register(event.getDispatcher());EssentialsCommands.register(event.getDispatcher());KitCommands.register(event.getDispatcher());ClaimCommands.register(event.getDispatcher());ShopCommands.register(event.getDispatcher());ModerationCommands.register(event.getDispatcher());}
 
     public static PermissionService permissions(){if(permissions==null)throw new IllegalStateException("Kivra permissions are not initialized yet");return permissions;}
     public static EconomyService economy(){if(economy==null)throw new IllegalStateException("Kivra economy is not initialized yet");return economy;}
