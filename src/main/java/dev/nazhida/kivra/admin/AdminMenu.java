@@ -1,5 +1,6 @@
 package dev.nazhida.kivra.admin;
 
+import dev.nazhida.kivra.integration.WanderlogIntegration;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.SimpleMenuProvider;
@@ -20,6 +21,9 @@ public final class AdminMenu {
             set(menu, 14, Items.EMERALD, "Shops", "Player shops and admin shops");
             set(menu, 15, Items.CHEST, "Kits", "Create and manage server kits");
             set(menu, 16, Items.IRON_SWORD, "Moderation", "Bans, mutes, warnings and history");
+            if (WanderlogIntegration.isLoaded()) {
+                set(menu, 20, Items.COMPASS, "Wanderlog", "Explorer levels, XP and discovered biomes");
+            }
             set(menu, 22, Items.BARRIER, "Close", "Close Kivra Admin");
             return menu;
         }, Component.literal("Kivra Admin")));
